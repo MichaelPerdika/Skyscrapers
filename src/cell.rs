@@ -12,6 +12,13 @@ impl Cell {
         }
     }
 
+    pub fn new_cell_fixed(number: usize, fixed_numbers: Vec<usize>) -> Cell {
+        Cell {
+            n: number,
+            numbers: fixed_numbers,
+        }
+    }
+
     pub fn print_cell(&self) {
         if self.numbers.len() == 1 && self.n >= 3 {
             let adj_spaces = self.n / 2;

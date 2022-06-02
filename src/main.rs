@@ -12,17 +12,21 @@ fn main() {
     // }
 
     let arg1 = args.get(1);
-    let number_n;
 
     match arg1 {
-        Some(arg) => number_n = arg.parse().unwrap(),
+        Some(arg) => {
+            run_program(arg.parse().unwrap());
+        }
         None => {
             println!("provide a number N to specify the NxN grid of skyscrapers!");
             return;
         }
     }
 
-    let mut board = Board::new_board(number_n);
+}
+
+fn run_program(number: usize){
+    let mut board = Board::new_board(number);
 
     loop {
         board.print_board();
@@ -56,6 +60,9 @@ fn parse_command(input_command: &str, board: &mut Board) {
     } else if input_command.starts_with("restore") {
         command = "restore";
         comm_args = &input_command[7..];
+    } else if input_command.starts_with("remove") {
+        command = "remove";
+        comm_args = &input_command[6..];
     }
     match command {
         "exit" => process::exit(0),
@@ -65,6 +72,7 @@ fn parse_command(input_command: &str, board: &mut Board) {
         "rl" => board.update_rule_x(comm_args, WhichRule::Left),
         "rr" => board.update_rule_x(comm_args, WhichRule::Right),
         "ok" => board.check_ok_cell(comm_args),
+        "remove" => board.remove_number_from_cell(comm_args),
         "c" | "check" => board.check_all(),
         "restore" => board.restore_cell(comm_args),
         _ => println!(
@@ -74,6 +82,13 @@ fn parse_command(input_command: &str, board: &mut Board) {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn it_works() {
+        assert_eq!(true, true);
+    }
+}
 
 // Test file = 
 //               2                       2       2            
