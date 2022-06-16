@@ -12,6 +12,7 @@ impl Cell {
         }
     }
 
+    #[cfg(test)]
     pub fn new_cell_fixed(number: usize, fixed_numbers: Vec<usize>) -> Cell {
         Cell {
             n: number,
@@ -45,6 +46,21 @@ impl Cell {
         if number > 0 && number <= self.n {
             self.numbers = vec![number];
         }
+    }
+
+    pub fn replace_cell_with_vec(&mut self, numbers: &Vec<usize>) {
+        if numbers.len() > 0 && numbers.len() <= self.n {
+            self.numbers = numbers.clone();
+        }
+    }
+
+    pub fn contains_numbers(&self, numbers: &Vec<usize>) -> bool {
+        for num in numbers {
+            if !self.numbers.contains(num) {
+                return false;
+            }
+        }
+        true
     }
 
     pub fn restore(&mut self) {

@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::Cell;
 
 pub enum WhichRule {
@@ -177,6 +179,7 @@ impl Board {
         self.check_line(WhichRule::Left);
         self.check_line(WhichRule::Right);
         self.check_unique_number_left_all_cells();
+        self.check_exclusive_numbers_all_cells();
         self.check_compl_cell_excl_hor_and_ver();
     }
 
@@ -214,6 +217,36 @@ impl Board {
                 j += 1;
             }
             i += 1;
+        }
+    }
+
+    fn check_exclusive_numbers_all_cells(&mut self) {
+        // Do the cols.
+        for col in 0..self.number {
+            let mut cells: Vec<Cell> = vec![];
+            for row in 0..self.number {
+                cells.push(self.cells[row][col].clone());
+            }
+            check_exclusive_numbers(&mut cells);
+            for row in 0..self.number {
+                if self.cells[row][col] != cells[row] {
+                    self.cells[row][col] = cells[row].clone();
+                }
+            }
+        }
+
+        // // Do the rows.
+        for row in 0..self.number {
+            let mut cells: Vec<Cell> = vec![];
+            for col in 0..self.number {
+                cells.push(self.cells[row][col].clone());
+            }
+            check_exclusive_numbers(&mut cells);
+            for col in 0..self.number {
+                if self.cells[row][col] != cells[col] {
+                    self.cells[row][col] = cells[col].clone();
+                }
+            }
         }
     }
 
@@ -352,6 +385,33 @@ fn check_cell_line_by_rule(rule: usize, cells: &mut Vec<Cell>) {
     }
 }
 
+fn check_exclusive_numbers(cells: &mut Vec<Cell>) {
+    let mut occurances: HashMap<usize, usize> = HashMap::new();
+
+    for cell in &mut *cells {
+        for num in &cell.numbers {
+            let counter = occurances.entry(*num).or_insert(0);
+            *counter += 1;
+        }
+    }
+
+    let mut frequencies: HashMap<usize, Vec<usize>> = HashMap::new();
+
+    for (num, freq) in &occurances {
+        let numbers = frequencies.entry(*freq).or_insert(vec![]);
+        (*numbers).push(*num);
+    }
+
+    for (freq, numbers) in &frequencies {
+        if *freq == numbers.len() {
+            for cell in &mut *cells {
+                if cell.contains_numbers(numbers) {
+                    cell.replace_cell_with_vec(numbers);
+                }
+            }
+        }
+    }
+}
 // This doesn't work well ! Check it more.
 fn check_unique_number_left(cells: &mut Vec<Cell>) {
     let mut number_count: Vec<usize> = vec![0; cells[0].n];
@@ -463,7 +523,6 @@ mod tests {
         );
 
         let n: usize = 3;
-        // transform |123, 12, 23, 1234| --> |123, 12, 23, (4) |
         let mut keep_only_three_do_nothing = vec![
             Cell::new_cell_fixed(n, vec![2, 3]),
             Cell::new_cell_fixed(n, vec![1]),
@@ -476,6 +535,30 @@ mod tests {
                 Cell::new_cell_fixed(n, vec![2, 3]),
                 Cell::new_cell_fixed(n, vec![1]),
                 Cell::new_cell_fixed(n, vec![2, 3]),
+            ]
+        );
+    }
+
+    #[test]
+    fn test_check_exclusive_numbers() {
+        let n: usize = 5;
+        // transform |123, 12345, 123, 12345, 123| --> |123, 45, 123, 45, 123|
+        let mut four_five_are_exclusive = vec![
+            Cell::new_cell_fixed(n, vec![1, 2, 3]),
+            Cell::new_cell(n),
+            Cell::new_cell_fixed(n, vec![1, 2, 3]),
+            Cell::new_cell(n),
+            Cell::new_cell_fixed(n, vec![1, 2, 3]),
+        ];
+        check_exclusive_numbers(&mut four_five_are_exclusive);
+        assert_eq!(
+            four_five_are_exclusive,
+            vec![
+                Cell::new_cell_fixed(n, vec![1, 2, 3]),
+                Cell::new_cell_fixed(n, vec![4, 5]),
+                Cell::new_cell_fixed(n, vec![1, 2, 3]),
+                Cell::new_cell_fixed(n, vec![4, 5]),
+                Cell::new_cell_fixed(n, vec![1, 2, 3]),
             ]
         );
     }
