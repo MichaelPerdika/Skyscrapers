@@ -365,8 +365,7 @@ fn check_cell_line_by_rule(rule: usize, cells: &mut Vec<Cell>) {
     if rule == 1 {
         cells[0].replace_cell_with_number(max_number);
     } else if rule == 2 {
-        cells[0].remove_number(max_number);
-        cells[1].remove_number(max_number - 1);
+        check_cell_line_by_rule_2_all_checks(cells);
     } else if rule > 2 && rule < max_number {
         let mut numbers_to_erase: Vec<usize> =
             (max_number - rule + 2..max_number + 1).rev().collect();
@@ -382,6 +381,52 @@ fn check_cell_line_by_rule(rule: usize, cells: &mut Vec<Cell>) {
         for i in 0..max_number {
             cells[i].replace_cell_with_number(i + 1);
         }
+    }
+}
+
+fn check_cell_line_by_rule_2_all_checks(cells: &mut Vec<Cell>) {
+    check_cell_line_by_rule_2_simple_check(cells);
+    check_cell_line_by_rule_2_advanced_check(cells);
+}
+
+fn check_cell_line_by_rule_2_simple_check(cells: &mut Vec<Cell>) {
+    let max_number = cells[0].n;
+    cells[0].remove_number(max_number);
+    cells[1].remove_number(max_number - 1);
+}
+
+fn check_cell_line_by_rule_2_advanced_check(cells: &mut Vec<Cell>) {
+    let max_number = cells[0].n;
+    let first_cell_max_number = cells[0].numbers.last().unwrap().clone();
+    let mut position_of_first_max = 0;
+    for cell in &mut *cells {
+        if cell.numbers.contains(&max_number) {
+            break;
+        }
+        position_of_first_max += 1;
+    }
+
+    // Remove all the max that the first cell can't reach e.g.
+    // n = 5: 123, 1234, 12345, 12345, 12345 --> 123, 1234, 12345, 12345, 1234_
+    if max_number - first_cell_max_number > 1 {
+        let how_many_last_cells = (max_number - first_cell_max_number) - 1;
+        for i in cells.len() - how_many_last_cells..cells.len() {
+            cells[i].remove_number(max_number);
+        }
+    }
+    
+    //between first cell and position of last remove the numbers between first_cell_max_number and max
+    // n = 5: 123, 1234, 12345, 12345, 12345 --> 123, 12__, 12345, 12345, 1234_
+    let numbers_between_maxes: Vec<usize> = (first_cell_max_number..max_number).collect();
+    for i in 1..position_of_first_max + 1 {
+        cells[i].remove_vec(&numbers_between_maxes);
+    }
+    
+    if position_of_first_max > 1 {
+        // on the first cell remove the too small numbers
+        // n = 5: 123, 1234, 12345, 12345, 12345 --> _23, 12__, 12345, 12345, 1234_
+        let numbers_to_erase_first_cell: Vec<usize> = (1..position_of_first_max).collect();
+        cells[0].remove_vec(&numbers_to_erase_first_cell);
     }
 }
 
@@ -402,16 +447,18 @@ fn check_exclusive_numbers(cells: &mut Vec<Cell>) {
         (*numbers).push(*num);
     }
 
-    for (freq, numbers) in &frequencies {
+    for (freq, numbers) in &mut frequencies {
         if *freq == numbers.len() {
             for cell in &mut *cells {
                 if cell.contains_numbers(numbers) {
+                    numbers.sort();
                     cell.replace_cell_with_vec(numbers);
                 }
             }
         }
     }
 }
+
 // This doesn't work well ! Check it more.
 fn check_unique_number_left(cells: &mut Vec<Cell>) {
     let mut number_count: Vec<usize> = vec![0; cells[0].n];
@@ -441,10 +488,11 @@ mod tests {
     use super::*;
     // use crate::board::check_cell_line_by_rule;
     use crate::Cell;
+
     #[test]
-    fn test_check_cell_line_by_rule() {
-        let n: usize = 5;
+    fn test_check_cell_line_by_rule_1() {
         // rule 1
+        let n: usize = 5;
         let mut rule_one = vec![Cell::new_cell(n); n];
         check_cell_line_by_rule(1, &mut rule_one);
         assert_eq!(
@@ -457,8 +505,12 @@ mod tests {
                 Cell::new_cell(n),
             ]
         );
+    }
 
+    #[test]
+    fn test_check_cell_line_by_rule_2_simple() {
         // rule 2
+        let n: usize = 5;
         let mut rule_two = vec![Cell::new_cell(n); n];
         check_cell_line_by_rule(2, &mut rule_two);
         assert_eq!(
@@ -471,8 +523,12 @@ mod tests {
                 Cell::new_cell(n),
             ]
         );
+    }
 
+    #[test]
+    fn test_check_cell_line_by_rule_mid() {
         // 2 < rule < max_number
+        let n: usize = 5;
         let mut rule_mid_n = vec![Cell::new_cell(n); n];
         check_cell_line_by_rule(4, &mut rule_mid_n);
         assert_eq!(
@@ -485,8 +541,12 @@ mod tests {
                 Cell::new_cell(n),
             ]
         );
+    }
 
+    #[test]
+    fn test_check_cell_line_by_rule_max() {
         // rule max_number
+        let n: usize = 5;
         let mut rule_max_n = vec![Cell::new_cell(n); n];
         check_cell_line_by_rule(n, &mut rule_max_n);
         assert_eq!(
@@ -497,6 +557,87 @@ mod tests {
                 Cell::new_cell_fixed(n, vec![3]),
                 Cell::new_cell_fixed(n, vec![4]),
                 Cell::new_cell_fixed(n, vec![5]),
+            ]
+        );
+    }
+
+    #[test]
+    fn test_check_cell_line_by_rule_2_advanced() {
+        // TODO:
+        // Ex1: n = 7: 12345, 1234, 12345, 1234567, .... --> ___45, 1234, 12345, 1234567, ... (1, 2, 3 can't be because 7 is 4 positions on the right) --> advanced: ___45, 1234, 1234_, 1234__7, ...
+        // Ex2: n = 7: if 6 not in first position then it can't be before 7. 12345, 123456, 123456, 1234567, 1234567, ... --> 12345, 12345_, 12345_, 12345_7, 1234567
+        // Ex (above 2 rules combined?): maybe if I have 123456, 123456, 123456, 123456, 123456, 1234567, 1234567 --> ____56, 12345_, 12345_, 12345_, 12345_, 12345_7, 1234567
+        let n: usize = 7;
+        let mut rule_two_advanced = vec![
+            Cell::new_cell_fixed(n, vec![1, 2, 3, 4, 5, 6]),
+            Cell::new_cell_fixed(n, vec![1, 2, 3, 4, 5, 6]),
+            Cell::new_cell_fixed(n, vec![1, 2, 3, 4, 5, 6]),
+            Cell::new_cell_fixed(n, vec![1, 2, 3, 4, 5, 6]),
+            Cell::new_cell_fixed(n, vec![1, 2, 3, 4, 5, 6]),
+            Cell::new_cell_fixed(n, vec![1, 2, 3, 4, 5, 6, 7]),
+            Cell::new_cell_fixed(n, vec![1, 2, 3, 4, 5, 6, 7]),
+        ];
+        check_cell_line_by_rule(2, &mut rule_two_advanced);
+        assert_eq!(
+            rule_two_advanced,
+            vec![
+                Cell::new_cell_fixed(n, vec![5, 6]),
+                Cell::new_cell_fixed(n, vec![1, 2, 3, 4, 5]),
+                Cell::new_cell_fixed(n, vec![1, 2, 3, 4, 5]),
+                Cell::new_cell_fixed(n, vec![1, 2, 3, 4, 5]),
+                Cell::new_cell_fixed(n, vec![1, 2, 3, 4, 5]),
+                Cell::new_cell_fixed(n, vec![1, 2, 3, 4, 5, 7]),
+                Cell::new_cell_fixed(n, vec![1, 2, 3, 4, 5, 6, 7]),
+            ]
+        );
+    }
+
+    #[test]
+    fn test_check_cell_line_by_rule_2_specific() {
+        let n: usize = 7;
+        let mut rule_two_specific = vec![
+            Cell::new_cell_fixed(n, vec![1, 2, 3, 4]),
+            Cell::new_cell_fixed(n, vec![1, 2, 3, 4]),
+            Cell::new_cell_fixed(n, vec![1, 2, 3, 4, 5, 6]),
+            Cell::new_cell_fixed(n, vec![1, 2, 3, 4, 5, 6, 7]),
+            Cell::new_cell_fixed(n, vec![1, 2, 3, 4, 5, 7]),
+            Cell::new_cell_fixed(n, vec![1, 2, 3, 4, 5, 7]),
+            Cell::new_cell_fixed(n, vec![1, 2, 3, 4, 5, 6, 7]),
+        ];
+        check_cell_line_by_rule(2, &mut rule_two_specific);
+        assert_eq!(
+            rule_two_specific,
+            vec![
+                Cell::new_cell_fixed(n, vec![3, 4]),
+                Cell::new_cell_fixed(n, vec![1, 2, 3]),
+                Cell::new_cell_fixed(n, vec![1, 2, 3]),
+                Cell::new_cell_fixed(n, vec![1, 2, 3, 7]),
+                Cell::new_cell_fixed(n, vec![1, 2, 3, 4, 5, 7]),
+                Cell::new_cell_fixed(n, vec![1, 2, 3, 4, 5]),
+                Cell::new_cell_fixed(n, vec![1, 2, 3, 4, 5, 6]),
+            ]
+        );
+    }
+
+    #[test]
+    fn test_check_cell_line_by_rule_2_remove_furthest_max() {
+        let n: usize = 5;
+        let mut rule_two_specific = vec![
+            Cell::new_cell_fixed(n, vec![1, 2]),
+            Cell::new_cell_fixed(n, vec![1, 2, 3, 4, 5]),
+            Cell::new_cell_fixed(n, vec![1, 2, 3, 4, 5]),
+            Cell::new_cell_fixed(n, vec![1, 2, 3, 4, 5]),
+            Cell::new_cell_fixed(n, vec![1, 2, 3, 4, 5]),
+        ];
+        check_cell_line_by_rule(2, &mut rule_two_specific);
+        assert_eq!(
+            rule_two_specific,
+            vec![
+                Cell::new_cell_fixed(n, vec![1, 2]),
+                Cell::new_cell_fixed(n, vec![1, 5]),
+                Cell::new_cell_fixed(n, vec![1, 2, 3, 4, 5]),
+                Cell::new_cell_fixed(n, vec![1, 2, 3, 4]),
+                Cell::new_cell_fixed(n, vec![1, 2, 3, 4]),
             ]
         );
     }

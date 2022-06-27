@@ -1,31 +1,64 @@
 use std::{env, io, process};
-mod cell;
 mod board;
-use crate::cell::Cell;
+mod cell;
 use crate::board::{Board, WhichRule};
+use crate::cell::Cell;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
-    // if args.len() == 1 {
-    //     println!("provide a number N to specify the NxN grid of skyscrapers!");
-    //     return;
-    // }
 
     let arg1 = args.get(1);
 
     match arg1 {
         Some(arg) => {
-            run_program(arg.parse().unwrap());
+            if arg.eq("test7") {
+                run_test_7_program();
+            } else {
+                run_program(arg.parse().unwrap());
+            }
         }
         None => {
             println!("provide a number N to specify the NxN grid of skyscrapers!");
             return;
         }
     }
-
 }
 
-fn run_program(number: usize){
+fn run_test_7_program() {
+    // Test file =
+    //               2                       2       2
+    // 5 |1234567|1234567|1234567|1234567|1234567|1234567|1234567|
+    // 5 |1234567|1234567|1234567|1234567|1234567|1234567|1234567|
+    // 3 |1234567|1234567|1234567|1234567|1234567|1234567|1234567|
+    //   |1234567|1234567|1234567|1234567|1234567|1234567|1234567| 5
+    // 2 |1234567|1234567|1234567|1234567|1234567|1234567|1234567|
+    // 2 |1234567|1234567|1234567|1234567|1234567|1234567|1234567| 4
+    //   |1234567|1234567|1234567|1234567|1234567|1234567|1234567| 3
+    //                               2       3       2       5
+    // Commands to run:
+    // cargo run 7
+    // ru020022
+    // rl553022
+    // rr0005043
+    // rd0002325
+    let mut board = Board::new_board(7);
+    parse_command("ru020022", &mut board);
+    parse_command("rl553022", &mut board);
+    parse_command("rr0005043", &mut board);
+    parse_command("rd0002325", &mut board);
+
+    loop {
+        board.print_board();
+        let mut input_text = String::new();
+        io::stdin()
+            .read_line(&mut input_text)
+            .expect("Failed to read line");
+        let command = input_text.trim();
+        parse_command(&command, &mut board);
+    }
+}
+
+fn run_program(number: usize) {
     let mut board = Board::new_board(number);
 
     loop {
@@ -81,30 +114,3 @@ fn parse_command(input_command: &str, board: &mut Board) {
         ),
     }
 }
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        assert_eq!(true, true);
-    }
-}
-
-// Test file = 
-//               2                       2       2            
-// 5 |1234567|1234567|1234567|1234567|1234567|1234567|1234567|  
-// 5 |1234567|1234567|1234567|1234567|1234567|1234567|1234567|  
-// 3 |1234567|1234567|1234567|1234567|1234567|1234567|1234567|  
-//   |1234567|1234567|1234567|1234567|1234567|1234567|1234567| 5
-// 2 |1234567|1234567|1234567|1234567|1234567|1234567|1234567|  
-// 2 |1234567|1234567|1234567|1234567|1234567|1234567|1234567| 4
-//   |1234567|1234567|1234567|1234567|1234567|1234567|1234567| 3
-//                               2       3       2       5    
-// Commands to run:
-// cargo run 7
-// ru020022
-// rl553022
-// rr0005043
-// rd0002325
-//
-//

@@ -73,4 +73,11 @@ impl Cell {
             self.numbers.retain(|&x| x != number);
         }
     }
+
+    pub fn remove_vec(&mut self, numbers: &Vec<usize>) {
+        for number in numbers {
+            self.remove_number(*number);
+        }
+
+    }
 }
