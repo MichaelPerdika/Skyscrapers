@@ -1,3 +1,6 @@
+TODO: Major tasks:
+- add gui
+
 - complete check_integrity_function
 - If a rule x is complete erase it or mark it as (x)? example 2 --> (2)
 

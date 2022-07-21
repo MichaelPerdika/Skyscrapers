@@ -367,16 +367,7 @@ fn check_cell_line_by_rule(rule: usize, cells: &mut Vec<Cell>) {
     } else if rule == 2 {
         check_cell_line_by_rule_2_all_checks(cells);
     } else if rule > 2 && rule < max_number {
-        let mut numbers_to_erase: Vec<usize> =
-            (max_number - rule + 2..max_number + 1).rev().collect();
-        let mut index = 0;
-        while !numbers_to_erase.is_empty() {
-            for m in &numbers_to_erase {
-                cells[index].remove_number(*m);
-            }
-            numbers_to_erase.pop();
-            index += 1
-        }
+        check_cell_line_by_rule_mid_all_checks(cells, rule);
     } else if rule == max_number {
         for i in 0..max_number {
             cells[i].replace_cell_with_number(i + 1);
@@ -414,20 +405,104 @@ fn check_cell_line_by_rule_2_advanced_check(cells: &mut Vec<Cell>) {
             cells[i].remove_number(max_number);
         }
     }
-    
+
     //between first cell and position of last remove the numbers between first_cell_max_number and max
     // n = 5: 123, 1234, 12345, 12345, 12345 --> 123, 12__, 12345, 12345, 1234_
     let numbers_between_maxes: Vec<usize> = (first_cell_max_number..max_number).collect();
     for i in 1..position_of_first_max + 1 {
         cells[i].remove_vec(&numbers_between_maxes);
     }
-    
+
     if position_of_first_max > 1 {
         // on the first cell remove the too small numbers
         // n = 5: 123, 1234, 12345, 12345, 12345 --> _23, 12__, 12345, 12345, 1234_
         let numbers_to_erase_first_cell: Vec<usize> = (1..position_of_first_max).collect();
         cells[0].remove_vec(&numbers_to_erase_first_cell);
     }
+}
+
+fn check_cell_line_by_rule_mid_all_checks(cells: &mut Vec<Cell>, rule: usize) {
+    check_cell_line_by_rule_mid_simple_check(cells, rule);
+    check_cell_line_by_rule_mid_atopo_max_num(cells, rule);
+}
+
+fn check_cell_line_by_rule_mid_simple_check(cells: &mut Vec<Cell>, rule: usize) {
+    let max_number = cells[0].n;
+    if max_number <= 2 {
+        return;
+    }
+    let mut numbers_to_erase: Vec<usize> = (max_number - rule + 2..max_number + 1).rev().collect();
+    let mut index = 0;
+    while !numbers_to_erase.is_empty() {
+        for m in &numbers_to_erase {
+            cells[index].remove_number(*m);
+        }
+        numbers_to_erase.pop();
+        index += 1
+    }
+}
+
+fn check_cell_line_by_rule_mid_atopo_max_num(cells: &mut Vec<Cell>, rule: usize) {
+    let max_number = cells[0].n;
+    if max_number <= 2 {
+        return;
+    }
+
+    for i in (0..max_number).rev() {
+        if cells[i].contains_numbers(&vec![max_number]) && cells[i].numbers.len() > 1 {
+            let mut temp_cells = cells.clone();
+            temp_cells[i].replace_cell_with_number(max_number);
+            for cell in &mut temp_cells {
+                cell.remove_number(max_number);
+            }
+
+            let max_skyscrapers = get_worst_case_min_number_of_skyscrapers(&temp_cells);
+            if max_skyscrapers > rule {
+                cells[i].remove_number(max_number);
+            }
+        }
+    }
+}
+
+fn get_worst_case_min_number_of_skyscrapers(cells: &Vec<Cell>) -> usize {
+    let max_number = cells[0].n;
+    let mut temp_cells = cells.clone();
+    let mut solved_nums: Vec<usize> = vec![];
+
+    for i in 0..max_number {
+        if temp_cells[i].numbers.len() == 1 {
+            solved_nums.push(temp_cells[i].numbers[0]);
+        }
+    }
+
+    for i in 0..max_number {
+        if temp_cells[i].numbers.len() > 1 {
+            let x: Vec<usize> = temp_cells[i].numbers.clone().into_iter().rev().collect();
+            for biggest_num in x {
+                if !solved_nums.contains(&biggest_num) {
+                    temp_cells[i].replace_cell_with_number(biggest_num);
+                    solved_nums.push(biggest_num);
+                    for cell in &mut temp_cells {
+                        cell.remove_number(biggest_num);
+                    }
+                    break;
+                }
+            }
+        }
+    }
+
+    let mut result: usize = 0;
+    let mut last_skyscraper = 0;
+    for cell in temp_cells {
+        assert!(cell.numbers.len() == 1);
+        let cell_skyscraper = cell.numbers[0];
+        if cell_skyscraper > last_skyscraper {
+            last_skyscraper = cell_skyscraper;
+            result += 1;
+        }
+    }
+
+    result
 }
 
 fn check_exclusive_numbers(cells: &mut Vec<Cell>) {
@@ -702,5 +777,65 @@ mod tests {
                 Cell::new_cell_fixed(n, vec![1, 2, 3]),
             ]
         );
+    }
+
+    #[test]
+    fn test_place_max_num_leads_to_atopo() {
+        let n: usize = 7;
+        let rule: usize = 3;
+        // transform 3 |123, 2345, 12345, 12345, 123457, (6), 123457| -> |123, 2345, 12345, 12345, 123457, (6), 12345_|
+        let mut test_cells = vec![
+            Cell::new_cell_fixed(n, vec![1, 2, 3]),
+            Cell::new_cell_fixed(n, vec![2, 3, 4, 5]),
+            Cell::new_cell_fixed(n, vec![1, 2, 3, 4, 5]),
+            Cell::new_cell_fixed(n, vec![1, 2, 3, 4, 5]),
+            Cell::new_cell_fixed(n, vec![1, 2, 3, 4, 5, 7]),
+            Cell::new_cell_fixed(n, vec![6]),
+            Cell::new_cell_fixed(n, vec![1, 2, 3, 4, 5, 7]),
+        ];
+
+        check_cell_line_by_rule_mid_atopo_max_num(&mut test_cells, rule);
+
+        assert_eq!(
+            test_cells,
+            vec![
+                Cell::new_cell_fixed(n, vec![1, 2, 3]),
+                Cell::new_cell_fixed(n, vec![2, 3, 4, 5]),
+                Cell::new_cell_fixed(n, vec![1, 2, 3, 4, 5]),
+                Cell::new_cell_fixed(n, vec![1, 2, 3, 4, 5]),
+                Cell::new_cell_fixed(n, vec![1, 2, 3, 4, 5, 7]),
+                Cell::new_cell_fixed(n, vec![6]),
+                Cell::new_cell_fixed(n, vec![1, 2, 3, 4, 5]),
+            ]
+        );
+    }
+
+    #[test]
+    fn test_get_worst_case_min_number_of_skyscrapers() {
+        let n: usize = 5;
+        let asc_cells = vec![
+            Cell::new_cell_fixed(n, vec![1]),
+            Cell::new_cell_fixed(n, vec![2]),
+            Cell::new_cell_fixed(n, vec![3]),
+            Cell::new_cell_fixed(n, vec![4]),
+            Cell::new_cell_fixed(n, vec![5]),
+        ];
+        let dsc_cells = vec![
+            Cell::new_cell_fixed(n, vec![5]),
+            Cell::new_cell_fixed(n, vec![4]),
+            Cell::new_cell_fixed(n, vec![3]),
+            Cell::new_cell_fixed(n, vec![2]),
+            Cell::new_cell_fixed(n, vec![1]),
+        ];
+        let random_cells = vec![
+            Cell::new_cell_fixed(n, vec![1, 2, 3]),
+            Cell::new_cell_fixed(n, vec![1, 2, 3, 4]),
+            Cell::new_cell_fixed(n, vec![1, 2, 3]),
+            Cell::new_cell(n),
+            Cell::new_cell_fixed(n, vec![1, 2, 3]),
+        ];
+        assert_eq!(get_worst_case_min_number_of_skyscrapers(&asc_cells), 5);
+        assert_eq!(get_worst_case_min_number_of_skyscrapers(&dsc_cells), 1);
+        assert_eq!(get_worst_case_min_number_of_skyscrapers(&random_cells), 3);
     }
 }
